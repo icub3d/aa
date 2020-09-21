@@ -1,0 +1,46 @@
+environments:
+  local:
+    auth:
+      token: "ABC123"
+    url:
+      proto: "http"
+      host: "localhost:3000"
+  marsh:
+    auth:
+      token: "DEF456"
+    url:
+      proto: "https"
+      host: "json.marsh.gg"
+requests:
+  json-get-posts:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
+    method: GET
+    query:
+      _page: 1
+      _limit: 5
+  json-get-post:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts/1"
+    method: GET
+  json-get-post-from-prev:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts/{{responses.json-get-post.id}}"
+    method: GET
+  json-post-post:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
+    method: POST
+    authentication:
+      type: bearer
+      token: "{{environment.auth.token}}"
+    headers:
+      Content-Type: application/json
+    body:
+      type: raw
+      value: |
+        {"title": "json-post-post","author":"me"}
+  json-post-post-file:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body:
+      type: file
+      value: test.json
