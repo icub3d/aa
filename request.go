@@ -6,6 +6,7 @@ import (
 )
 
 type Request struct {
+	Description    string            `yaml:"description,omitempty"`
 	URL            string            `yaml:"url"`
 	Method         string            `yaml:"method"`
 	Headers        map[string]string `yaml:"headers"`
