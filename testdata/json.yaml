@@ -13,15 +13,18 @@ environments:
       host: "json.marsh.gg"
 requests:
   json-get-posts:
+    description: "get a list of 5 posts"
     url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
     method: GET
     query:
       _page: 1
       _limit: 5
   json-get-post:
+    description: "get post #1"
     url: "{{environment.url.proto}}://{{environment.url.host}}/posts/1"
     method: GET
   json-get-post-from-prev:
+    description: "get post from json-get-post's body id"
     url: "{{environment.url.proto}}://{{environment.url.host}}/posts/{{responses.json-get-post.id}}"
     method: GET
   json-post-post:

@@ -49,65 +49,36 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:    "run",
-				Aliases: []string{"r"},
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:    "json",
-						Aliases: []string{"j"},
-						EnvVars: []string{"AA_RUN_JSON"},
-						Usage:   "pretty print json responses",
+				Name:    "requests",
+				Aliases: []string{"req", "r"},
+				Subcommands: []*cli.Command{
+					{
+						Name:    "run",
+						Aliases: []string{"r"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "json",
+								Aliases: []string{"j"},
+								EnvVars: []string{"AA_RUN_JSON"},
+								Usage:   "pretty print json responses",
+							},
+							&cli.StringFlag{
+								Name:    "body",
+								Aliases: []string{"b"},
+								EnvVars: []string{"AA_RUN_BODY"},
+								Usage:   "save response body to given file instead of printing it",
+							},
+						},
+						Usage:  "run a list of requests",
+						Action: wrap(requestrun),
+					},
+					{
+						Name:    "list",
+						Aliases: []string{"l", "ls"},
+						Usage:   "list requests",
+						Action:  wrap(requestlist),
 					},
 				},
-				Usage: "run a list of requests",
-				Action: wrap(func(c *cli.Context, cfg *Config, env Environment) error {
-					if !c.Args().Present() {
-						return cli.Exit(color.Red.Sprintf("run expects at least one request name"), -1)
-					}
-
-					// Flatten the interpolation data.
-					f := env.Flatten()
-					for k, v := range cfg.Responses {
-						v.Flatten(f, k)
-					}
-
-					// Run for each request.
-					for x := 0; x < c.Args().Len(); x++ {
-						name := c.Args().Get(x)
-						color.Magenta.Println("================================================================")
-						color.Magenta.Println(name)
-						color.Magenta.Println("================================================================")
-						req, ok := cfg.Requests[name]
-						if !ok {
-							return cli.Exit(color.Red.Sprintf("request '%v' not found", name), -1)
-						}
-
-						req.Interpolate(f)
-
-						resp, err := run(c, req, cfg.Preferences)
-						if err != nil {
-							return cli.Exit(color.Red.Sprintf("running %v: %v", name, err), -1)
-						}
-
-						// Flatten for upcoming runs.
-						resp.Flatten(f, name)
-
-						// Also save to disk for future executions.
-						y, err := yaml.Marshal(&Config{
-							Responses: map[string]Response{
-								name: *resp,
-							},
-						})
-						if err != nil {
-							return cli.Exit(color.Red.Sprintf("marshalling response yaml: %v", err), -1)
-						}
-						err = ioutil.WriteFile(filepath.Join(c.String("config"), name+"-response.yaml"), y, 0660)
-						if err != nil {
-							return cli.Exit(color.Red.Sprintf("saving response yaml: %v", err), -1)
-						}
-					}
-					return nil
-				}),
 			},
 		},
 	}
@@ -130,6 +101,67 @@ func wrap(f func(ctx *cli.Context, cfg *Config, env Environment) error) cli.Acti
 
 		return f(c, cfg, env)
 	}
+}
+
+func requestlist(c *cli.Context, cfg *Config, env Environment) error {
+	for r, v := range cfg.Requests {
+		color.Magenta.Printf("%v", r)
+		if v.Description != "" {
+			fmt.Print(" - ")
+			color.Green.Printf("%v", v.Description)
+		}
+		fmt.Print("\n")
+	}
+	return nil
+}
+
+func requestrun(c *cli.Context, cfg *Config, env Environment) error {
+	if !c.Args().Present() {
+		return cli.Exit(color.Red.Sprintf("run expects at least one request name"), -1)
+	}
+
+	// Flatten the interpolation data.
+	f := env.Flatten()
+	for k, v := range cfg.Responses {
+		v.Flatten(f, k)
+	}
+
+	// Run for each request.
+	for x := 0; x < c.Args().Len(); x++ {
+		name := c.Args().Get(x)
+		color.Magenta.Println("================================================================")
+		color.Magenta.Println(name)
+		color.Magenta.Println("================================================================")
+		req, ok := cfg.Requests[name]
+		if !ok {
+			return cli.Exit(color.Red.Sprintf("request '%v' not found", name), -1)
+		}
+
+		req.Interpolate(f)
+
+		resp, err := run(c, req, cfg.Preferences)
+		if err != nil {
+			return cli.Exit(color.Red.Sprintf("running %v: %v", name, err), -1)
+		}
+
+		// Flatten for upcoming runs.
+		resp.Flatten(f, name)
+
+		// Also save to disk for future executions.
+		y, err := yaml.Marshal(&Config{
+			Responses: map[string]Response{
+				name: *resp,
+			},
+		})
+		if err != nil {
+			return cli.Exit(color.Red.Sprintf("marshalling response yaml: %v", err), -1)
+		}
+		err = ioutil.WriteFile(filepath.Join(c.String("config"), name+"-response.yaml"), y, 0660)
+		if err != nil {
+			return cli.Exit(color.Red.Sprintf("saving response yaml: %v", err), -1)
+		}
+	}
+	return nil
 }
 
 func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error) {
@@ -208,8 +240,22 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 	color.Green.Printf("\n")
 
 	// Copy response body
+	ww := []io.Writer{}
 	b := &bytes.Buffer{}
-	_, err = io.Copy(b, resp.Body)
+	ww = append(ww, b)
+
+	// Add a file writer.
+	if f := ctx.String("body"); f != "" {
+		b, err := os.Create(f)
+		if err != nil {
+			return nil, fmt.Errorf("opening body file '%v': %v", f, err)
+		}
+		defer b.Close()
+		ww = append(ww, b)
+		color.Green.Printf("<body save to '%v'>\n", f)
+	}
+
+	_, err = io.Copy(io.MultiWriter(ww...), resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("reading body: %v", err)
 	}
@@ -225,7 +271,9 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 		}
 	}
 
-	color.Green.Printf("%v\n", b.String())
+	if ctx.String("body") == "" {
+		color.Green.Printf("%v\n", b.String())
+	}
 
 	duration := time.Since(start)
 	color.Magenta.Printf("\nduration: %v\n", duration)
