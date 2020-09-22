@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -50,7 +51,15 @@ func main() {
 			{
 				Name:    "run",
 				Aliases: []string{"r"},
-				Usage:   "run a list of requests",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						EnvVars: []string{"AA_RUN_JSON"},
+						Usage:   "pretty print json responses",
+					},
+				},
+				Usage: "run a list of requests",
 				Action: wrap(func(c *cli.Context, cfg *Config, env Environment) error {
 					if !c.Args().Present() {
 						return cli.Exit(color.Red.Sprintf("run expects at least one request name"), -1)
@@ -73,9 +82,9 @@ func main() {
 							return cli.Exit(color.Red.Sprintf("request '%v' not found", name), -1)
 						}
 
-						req.Interpolate(cfg.Responses, f)
+						req.Interpolate(f)
 
-						resp, err := run(req, cfg.Preferences)
+						resp, err := run(c, req, cfg.Preferences)
 						if err != nil {
 							return cli.Exit(color.Red.Sprintf("running %v: %v", name, err), -1)
 						}
@@ -123,7 +132,7 @@ func wrap(f func(ctx *cli.Context, cfg *Config, env Environment) error) cli.Acti
 	}
 }
 
-func run(r Request, prefs map[string]string) (*Response, error) {
+func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error) {
 	in := &bytes.Buffer{}
 	out := &bytes.Buffer{}
 
@@ -164,8 +173,8 @@ func run(r Request, prefs map[string]string) (*Response, error) {
 	if authType, ok := r.Authentication["type"]; ok {
 		switch strings.ToLower(authType) {
 		case "bearer":
-			req.Header.Add("Authentication", "Bearer "+r.Authentication["token"])
-			color.Blue.Printf("%v: %v\n", "Authentication", "Bearer "+r.Authentication["token"])
+			req.Header.Add("Authorization", "Bearer "+r.Authentication["token"])
+			color.Blue.Printf("%v: %v\n", "Authorization", "Bearer "+r.Authentication["token"])
 		}
 	}
 
@@ -205,6 +214,17 @@ func run(r Request, prefs map[string]string) (*Response, error) {
 		return nil, fmt.Errorf("reading body: %v", err)
 	}
 	resp.Body.Close()
+
+	if ctx.Bool("json") && strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		tmp := map[string]interface{}{}
+		if err := json.Unmarshal(b.Bytes(), &tmp); err == nil {
+			buf, err := json.MarshalIndent(tmp, "", "     ")
+			if err == nil {
+				b = bytes.NewBuffer(buf)
+			}
+		}
+	}
+
 	color.Green.Printf("%v\n", b.String())
 
 	duration := time.Since(start)
