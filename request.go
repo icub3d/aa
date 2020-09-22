@@ -19,7 +19,7 @@ type Body struct {
 	Value string `yaml:"value"`
 }
 
-func (r *Request) Interpolate(responses map[string]Response, vars map[string]string) {
+func (r *Request) Interpolate(vars map[string]string) {
 	r.URL = interpolate(r.URL, vars)
 	r.Method = interpolate(r.Method, vars)
 	r.Body.Type = interpolate(r.Body.Type, vars)

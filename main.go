@@ -73,7 +73,7 @@ func main() {
 							return cli.Exit(color.Red.Sprintf("request '%v' not found", name), -1)
 						}
 
-						req.Interpolate(cfg.Responses, f)
+						req.Interpolate(f)
 
 						resp, err := run(req, cfg.Preferences)
 						if err != nil {
@@ -164,8 +164,8 @@ func run(r Request, prefs map[string]string) (*Response, error) {
 	if authType, ok := r.Authentication["type"]; ok {
 		switch strings.ToLower(authType) {
 		case "bearer":
-			req.Header.Add("Authentication", "Bearer "+r.Authentication["token"])
-			color.Blue.Printf("%v: %v\n", "Authentication", "Bearer "+r.Authentication["token"])
+			req.Header.Add("Authorization", "Bearer "+r.Authentication["token"])
+			color.Blue.Printf("%v: %v\n", "Authorization", "Bearer "+r.Authentication["token"])
 		}
 	}
 
