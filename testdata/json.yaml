@@ -47,3 +47,16 @@ requests:
     body:
       type: file
       value: test.json
+  json-post-post-mp:
+    url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
+    method: POST
+    body:
+      type: multipart
+      value: |
+        - type: file
+          name: input-file
+          value: test.json
+        - type: raw
+          name: raw-data
+          value: |
+            {"title": "json-post-post","author":"me"}

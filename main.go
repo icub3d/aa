@@ -211,17 +211,9 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 	}
 
 	// Setup the body
-	var body io.ReadCloser
-	switch r.Body.Type {
-	case "raw":
-		body = ioutil.NopCloser(bytes.NewBufferString(r.Body.Value))
-		color.Blue.Printf("%s\n", r.Body.Value)
-	case "file":
-		body, err = os.Open(r.Body.Value)
-		if err != nil {
-			return nil, fmt.Errorf("opening file '%v': %v", r.Body.Value, err)
-		}
-		color.Blue.Printf("<file contents of '%s'>\n", r.Body.Value)
+	body, err := createRequestBody(req, r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("creating request body: %v", err)
 	}
 	req.Body = body
 	color.Blue.Printf("\n")
