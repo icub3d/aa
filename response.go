@@ -34,6 +34,9 @@ func (r *Response) Flatten(m map[string]string, name string) error {
 
 func flattenHelperJSON(e map[string]interface{}, result map[string]string, prefix string) {
 	for key, v := range e {
+		if v == nil {
+			v = ""
+		}
 		t := reflect.TypeOf(v).Kind()
 		if t == reflect.Int || t == reflect.Float32 || t == reflect.Float64 || t == reflect.String || t == reflect.Bool {
 			result[prefix+"."+key] = fmt.Sprintf("%v", v)

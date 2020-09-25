@@ -23,7 +23,7 @@ func main() {
 	app := &cli.App{
 		Name:     "aa",
 		Usage:    "API Automation for the command line!",
-		Version:  "v0.1.0",
+		Version:  "v0.1.3",
 		Compiled: time.Now(),
 		Authors: []*cli.Author{
 			&cli.Author{
@@ -205,8 +205,8 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 	if authType, ok := r.Authentication["type"]; ok {
 		switch strings.ToLower(authType) {
 		case "bearer":
-			req.Header.Add("Authorization", "Bearer "+r.Authentication["token"])
-			color.Blue.Printf("%v: %v\n", "Authorization", "Bearer "+r.Authentication["token"])
+			req.Header.Add("Authorization", "Bearer "+r.Authentication["value"])
+			color.Blue.Printf("%v: %v\n", "Authorization", "Bearer "+r.Authentication["value"])
 		}
 	}
 

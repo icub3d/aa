@@ -21,6 +21,8 @@ func createRequestBody(req *http.Request, body Body) (io.ReadCloser, error) {
 		return handleFileBodyRequest(body.Value)
 	case "multipart":
 		return handleMultipartBodyRequest(req, body.Value)
+	case "":
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unexpected body type: %v", body.Type)
 	}
