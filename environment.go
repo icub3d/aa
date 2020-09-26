@@ -11,12 +11,18 @@ import (
 // information.
 type Environment map[interface{}]interface{}
 
-// Flatten returns the environment flattened where hierarchy uses
-// dot-notation instead of nested maps.
-func (e Environment) Flatten() map[string]string {
+// Flatten the environment variables where hierarchy uses dot-notation
+// instead of nested maps. Key/Value pairs are added to the given
+// map. Interpolation is also done on the environment values from the
+// given responses.
+func (e Environment) Flatten(responses map[string]string) {
 	result := map[string]string{}
 	flattenHelperII(e, result, "environment")
-	return result
+
+	// Do interpolation for the environment variables.
+	for key, value := range result {
+		responses[key] = interpolate(value, responses)
+	}
 }
 
 func flattenHelperII(e map[interface{}]interface{}, result map[string]string, prefix string) {

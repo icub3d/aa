@@ -19,7 +19,7 @@ type Config struct {
 	Environments map[string]Environment `yaml:"environments,omitempty"`
 	Requests     map[string]Request     `yaml:"requests,omitempty"`
 	Responses    map[string]Response    `yaml:"responses,omitempty"`
-	Preferences  map[string]string      `yaml:"preferencesomitempty"`
+	Preferences  map[string]string      `yaml:"preferences,omitempty"`
 }
 
 func NewConfig(orgPath string) (*Config, error) {
@@ -46,7 +46,7 @@ func NewConfig(orgPath string) (*Config, error) {
 			}
 
 			// The path should exclude the original path name and have
-			// not trailing or leading slashes.
+			// no trailing or leading slashes.
 			path = strings.TrimPrefix(path, orgPath)
 			path = filepath.Dir(path)
 			path = strings.Trim(path, "/.")
@@ -77,7 +77,8 @@ func (c *Config) Merge(nc *Config, path string) {
 		c.Requests[prefix+k] = v
 	}
 
+	// Responses have their prefix in their key.
 	for k, v := range nc.Responses {
-		c.Responses[prefix+k] = v
+		c.Responses[k] = v
 	}
 }

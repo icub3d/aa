@@ -23,7 +23,7 @@ func main() {
 	app := &cli.App{
 		Name:     "aa",
 		Usage:    "API Automation for the command line!",
-		Version:  "v0.1.0",
+		Version:  "v0.1.3",
 		Compiled: time.Now(),
 		Authors: []*cli.Author{
 			&cli.Author{
@@ -120,14 +120,19 @@ func requestrun(c *cli.Context, cfg *Config, env Environment) error {
 		return cli.Exit(color.Red.Sprintf("run expects at least one request name"), -1)
 	}
 
-	// Flatten the interpolation data.
-	f := env.Flatten()
-	for k, v := range cfg.Responses {
-		v.Flatten(f, k)
-	}
-
 	// Run for each request.
 	for x := 0; x < c.Args().Len(); x++ {
+
+		// Flatten the interpolation data.
+		vars := map[string]string{}
+		for k, v := range cfg.Responses {
+			v.Flatten(vars, k)
+		}
+		env.Flatten(vars)
+
+		fmt.Println(vars)
+
+		// Print out the name.
 		name := c.Args().Get(x)
 		color.Magenta.Println("================================================================")
 		color.Magenta.Println(name)
@@ -137,15 +142,15 @@ func requestrun(c *cli.Context, cfg *Config, env Environment) error {
 			return cli.Exit(color.Red.Sprintf("request '%v' not found", name), -1)
 		}
 
-		req.Interpolate(f)
+		req.Interpolate(vars)
 
-		resp, err := run(c, req, cfg.Preferences)
+		resp, err := run(c, name, req, cfg.Preferences)
 		if err != nil {
 			return cli.Exit(color.Red.Sprintf("running %v: %v", name, err), -1)
 		}
 
 		// Flatten for upcoming runs.
-		resp.Flatten(f, name)
+		cfg.Responses[name] = *resp
 
 		// Also save to disk for future executions.
 		y, err := yaml.Marshal(&Config{
@@ -164,9 +169,17 @@ func requestrun(c *cli.Context, cfg *Config, env Environment) error {
 	return nil
 }
 
-func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error) {
-	in := &bytes.Buffer{}
-	out := &bytes.Buffer{}
+func run(ctx *cli.Context, name string, r Request, prefs map[string]string) (*Response, error) {
+	in, err := os.Create(filepath.Join(ctx.String("config"), name+"-response.raw"))
+	if err != nil {
+		return nil, fmt.Errorf("creating response raw file: %v", err)
+	}
+	defer in.Close()
+	out, err := os.Create(filepath.Join(ctx.String("config"), name+"-request.raw"))
+	if err != nil {
+		return nil, fmt.Errorf("creating request raw file: %v", err)
+	}
+	defer out.Close()
 
 	// Create our client
 	tlsCfg := &tls.Config{}
@@ -211,17 +224,9 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 	}
 
 	// Setup the body
-	var body io.ReadCloser
-	switch r.Body.Type {
-	case "raw":
-		body = ioutil.NopCloser(bytes.NewBufferString(r.Body.Value))
-		color.Blue.Printf("%s\n", r.Body.Value)
-	case "file":
-		body, err = os.Open(r.Body.Value)
-		if err != nil {
-			return nil, fmt.Errorf("opening file '%v': %v", r.Body.Value, err)
-		}
-		color.Blue.Printf("<file contents of '%s'>\n", r.Body.Value)
+	body, err := createRequestBody(req, r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("creating request body: %v", err)
 	}
 	req.Body = body
 	color.Blue.Printf("\n")
@@ -252,7 +257,7 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 		}
 		defer b.Close()
 		ww = append(ww, b)
-		color.Green.Printf("<body save to '%v'>\n", f)
+		color.Green.Printf("<body saved to '%v'>\n", f)
 	}
 
 	_, err = io.Copy(io.MultiWriter(ww...), resp.Body)
@@ -280,13 +285,11 @@ func run(ctx *cli.Context, r Request, prefs map[string]string) (*Response, error
 
 	// Create and return response information.
 	response := &Response{
-		When:        time.Now(),
-		Status:      resp.Status,
-		StatusCode:  resp.StatusCode,
-		Duration:    duration,
-		Body:        b.String(),
-		RawRequest:  out.String(),
-		RawResponse: in.String(),
+		When:       time.Now(),
+		Status:     resp.Status,
+		StatusCode: resp.StatusCode,
+		Duration:   duration,
+		Body:       b.String(),
 	}
 
 	response.Headers = map[string]string{}
