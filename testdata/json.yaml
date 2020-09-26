@@ -5,6 +5,12 @@ environments:
     url:
       proto: "http"
       host: "localhost:3000"
+  local-parse:
+    auth:
+      token: "{{responses.json-get-post.id}}"
+    url:
+      proto: "http"
+      host: "localhost:3000"
   marsh:
     auth:
       token: "DEF456"
@@ -27,6 +33,9 @@ requests:
     description: "get post from json-get-post's body id"
     url: "{{environment.url.proto}}://{{environment.url.host}}/posts/{{responses.json-get-post.id}}"
     method: GET
+    authentication:
+      type: bearer
+      token: "{{environment.auth.token}}"
   json-post-post:
     url: "{{environment.url.proto}}://{{environment.url.host}}/posts"
     method: POST

@@ -19,7 +19,7 @@ type Config struct {
 	Environments map[string]Environment `yaml:"environments,omitempty"`
 	Requests     map[string]Request     `yaml:"requests,omitempty"`
 	Responses    map[string]Response    `yaml:"responses,omitempty"`
-	Preferences  map[string]string      `yaml:"preferencesomitempty"`
+	Preferences  map[string]string      `yaml:"preferences,omitempty"`
 }
 
 func NewConfig(orgPath string) (*Config, error) {

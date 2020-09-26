@@ -8,15 +8,13 @@ import (
 )
 
 type Response struct {
-	When        time.Time         `yaml:"when"`
-	Status      string            `yaml:"status"`
-	StatusCode  int               `yaml:"status-code"`
-	Duration    time.Duration     `yaml:"duration"`
-	Cookies     map[string]string `yaml:"cookies"`
-	Headers     map[string]string `yaml:"headers"`
-	Body        string            `yaml:"body"`
-	RawRequest  string            `yaml:"raw-request"`
-	RawResponse string            `yaml:"raw-response"`
+	When       time.Time         `yaml:"when"`
+	Status     string            `yaml:"status"`
+	StatusCode int               `yaml:"status-code"`
+	Duration   time.Duration     `yaml:"duration"`
+	Cookies    map[string]string `yaml:"cookies"`
+	Headers    map[string]string `yaml:"headers"`
+	Body       string            `yaml:"body"`
 }
 
 // Flatten the JSON of the body to the given map where
