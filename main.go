@@ -130,8 +130,6 @@ func requestrun(c *cli.Context, cfg *Config, env Environment) error {
 		}
 		env.Flatten(vars)
 
-		fmt.Println(vars)
-
 		// Print out the name.
 		name := c.Args().Get(x)
 		color.Magenta.Println("================================================================")
@@ -183,7 +181,7 @@ func run(ctx *cli.Context, name string, r Request, prefs map[string]string) (*Re
 
 	// Create our client
 	tlsCfg := &tls.Config{}
-	if ignore, ok := prefs["ignore-certs"]; ok && ignore != "true" {
+	if ignore, ok := prefs["ignore-certs"]; ok && ignore == "true" {
 		tlsCfg.InsecureSkipVerify = true
 	}
 
