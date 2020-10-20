@@ -64,6 +64,14 @@ func main() {
 								Usage:   "pretty print json responses",
 							},
 							&cli.StringFlag{
+								Name:  "exclude",
+								Usage: "exclude the given command-separated list of fields from the json pretty printer.",
+							},
+							&cli.StringFlag{
+								Name:  "include",
+								Usage: "include only the given command-separated list of fields in the json pretty printer.",
+							},
+							&cli.StringFlag{
 								Name:    "body",
 								Aliases: []string{"b"},
 								EnvVars: []string{"AA_RUN_BODY"},
@@ -274,6 +282,17 @@ func run(ctx *cli.Context, name string, r Request, prefs map[string]string) (*Re
 	if ctx.Bool("json") && strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		tmp := map[string]interface{}{}
 		if err := json.Unmarshal(b.Bytes(), &tmp); err == nil {
+			if exclude := ctx.String("exclude"); exclude != "" {
+				for _, v := range strings.Split(exclude, ",") {
+					delete(tmp, v)
+				}
+			} else if include := ctx.String("include"); include != "" {
+				tt := map[string]interface{}{}
+				for _, v := range strings.Split(include, ",") {
+					tt[v] = tmp[v]
+				}
+				tmp = tt
+			}
 			buf, err := json.MarshalIndent(tmp, "", "     ")
 			if err == nil {
 				b = bytes.NewBuffer(buf)
