@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"regexp"
 	"strings"
 )
@@ -45,7 +46,11 @@ func interpolate(s string, vars map[string]string) string {
 	matches := re.FindAllString(s, -1)
 	for _, match := range matches {
 		m := strings.Trim(match, "{}")
-		if v, ok := vars[m]; ok {
+		e := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(m, ".", "_"), "/", "_"))
+		if v := os.Getenv(e); v != "" {
+			// Prefer the environment variable.
+			s = strings.ReplaceAll(s, match, v)
+		} else if v, ok := vars[m]; ok {
 			s = strings.ReplaceAll(s, match, v)
 		}
 	}

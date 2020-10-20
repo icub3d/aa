@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -104,11 +105,17 @@ func wrap(f func(ctx *cli.Context, cfg *Config, env Environment) error) cli.Acti
 }
 
 func requestlist(c *cli.Context, cfg *Config, env Environment) error {
-	for r, v := range cfg.Requests {
+	rr := make([]string, 0, len(cfg.Requests))
+	for r := range cfg.Requests {
+		rr = append(rr, r)
+	}
+	sort.Strings(rr)
+
+	for _, r := range rr {
 		color.Magenta.Printf("%v", r)
-		if v.Description != "" {
+		if cfg.Requests[r].Description != "" {
 			fmt.Print(" - ")
-			color.Green.Printf("%v", v.Description)
+			color.Green.Printf("%v", cfg.Requests[r].Description)
 		}
 		fmt.Print("\n")
 	}
