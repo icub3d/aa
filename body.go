@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gookit/color"
 	"gopkg.in/yaml.v3"
@@ -80,7 +81,7 @@ func handleMultipartBodyRequest(req *http.Request, s string) (io.ReadCloser, err
 			case "file":
 				r, err = handleFileBodyRequest(part.Value)
 				if err == nil {
-					w, err = mw.CreateFormFile(part.Name, part.Value)
+					w, err = mw.CreateFormFile(part.Name, filepath.Base(part.Value))
 				}
 			default:
 				err = fmt.Errorf("unsupported part type: %s", part.Type)

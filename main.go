@@ -68,6 +68,14 @@ func main() {
 								EnvVars: []string{"AA_RUN_BODY"},
 								Usage:   "save response body to given file instead of printing it",
 							},
+							&cli.StringFlag{
+								Name:  "include",
+								Usage: "when pretty printing json, only include this comma-separated list of top level keys",
+							},
+							&cli.StringFlag{
+								Name:  "exclude",
+								Usage: "when pretty printing json, exclude this comma-separated list of top level keys",
+							},
 						},
 						Usage:  "run a list of requests",
 						Action: wrap(requestrun),
@@ -130,8 +138,6 @@ func requestrun(c *cli.Context, cfg *Config, env Environment) error {
 		}
 		env.Flatten(vars)
 
-		fmt.Println(vars)
-
 		// Print out the name.
 		name := c.Args().Get(x)
 		color.Magenta.Println("================================================================")
@@ -183,7 +189,7 @@ func run(ctx *cli.Context, name string, r Request, prefs map[string]string) (*Re
 
 	// Create our client
 	tlsCfg := &tls.Config{}
-	if ignore, ok := prefs["ignore-certs"]; ok && ignore != "true" {
+	if ignore, ok := prefs["ignore-certs"]; ok && ignore == "true" {
 		tlsCfg.InsecureSkipVerify = true
 	}
 
@@ -269,6 +275,22 @@ func run(ctx *cli.Context, name string, r Request, prefs map[string]string) (*Re
 	if ctx.Bool("json") && strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		tmp := map[string]interface{}{}
 		if err := json.Unmarshal(b.Bytes(), &tmp); err == nil {
+			if include := ctx.String("include"); include != "" {
+				parts := strings.Split(include, ",")
+				n := map[string]interface{}{}
+				for _, part := range parts {
+					if v, ok := tmp[part]; ok {
+						n[part] = v
+					}
+				}
+				tmp = n
+			} else if exclude := ctx.String("exclude"); exclude != "" {
+				parts := strings.Split(exclude, ",")
+				for _, part := range parts {
+					delete(tmp, part)
+				}
+			}
+
 			buf, err := json.MarshalIndent(tmp, "", "     ")
 			if err == nil {
 				b = bytes.NewBuffer(buf)
